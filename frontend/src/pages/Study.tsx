@@ -279,6 +279,13 @@ export default function Study() {
           </div>
         )}
 
+        {q.translation && (
+          <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-slate-700">
+            <span className="font-medium text-blue-700">Türkçe Tercüme:</span>
+            <div className="mt-1 whitespace-pre-wrap">{q.translation}</div>
+          </div>
+        )}
+
         {feedback == null ? (
           <div className="mt-6">
             <button
@@ -304,12 +311,6 @@ export default function Study() {
             {feedback.explanation && (
               <div className="mb-4 whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
                 <span className="font-medium">Açıklama:</span> {feedback.explanation}
-              </div>
-            )}
-
-            {q.translation && (
-              <div className="mb-4 whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                <span className="font-medium">Türkçe Tercüme:</span> {q.translation}
               </div>
             )}
 
