@@ -2,6 +2,8 @@
 
 Kart gerektirmeyen ücretsiz yayın mimarisi. Kişisel kullanım içindir.
 
+**Durum: ✓ Canlı** — Frontend: `https://fsrs-testing.seolisa.com` · Backend: `https://testing-exam-with-fsrs-algorithm.vercel.app`
+
 ## Mimari
 
 ```
@@ -34,8 +36,8 @@ Domain: Cloudflare DNS → Vercel
 ## 3) Vercel — Frontend
 
 1. **Add New Project** → aynı repo → **Root Directory:** `frontend`
-2. `frontend/vercel.json` içindeki `YOUR-BACKEND.onrender.com` yerine backend'in Vercel URL'ini yaz.
-3. Deploy et.
+2. `frontend/vercel.json` içindeki rewrite, backend URL'ine (`testing-exam-with-fsrs-algorithm.vercel.app`) bağlandı.
+3. Deploy et. (✓ tamamlandı)
 
 ## 4) Cloudflare — Domain (opsiyonel)
 
