@@ -100,6 +100,13 @@ export const reviewLogs = pgTable('review_logs', {
   new_stability: doublePrecision('new_stability'),
 });
 
+export const fsrsParams = pgTable('fsrs_params', {
+  user_id: integer('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  w_json: text('w_json').notNull(),
+  review_count: integer('review_count').notNull().default(0),
+  updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Exam = typeof exams.$inferSelect;

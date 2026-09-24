@@ -32,3 +32,13 @@ export function useDeleteUser() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
   });
 }
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (vars: { id: number; password: string }) =>
+      api('/users/' + vars.id + '/password', {
+        method: 'PUT',
+        body: JSON.stringify({ password: vars.password }),
+      }),
+  });
+}

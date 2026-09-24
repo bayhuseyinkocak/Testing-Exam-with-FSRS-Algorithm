@@ -1,4 +1,5 @@
-import { useStatsOverview } from '../api/stats';
+import { useStatsOverview, useOptimizeFsrs } from '../api/stats';
+import { useMe } from '../api/auth';
 
 function pct(v: number | null): string {
   if (v == null) return '—';
@@ -16,6 +17,8 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 export default function Stats() {
   const { data, isLoading, isError } = useStatsOverview();
+  const optimize = useOptimizeFsrs();
+  const { data: me } = useMe();
 
   if (isLoading) return <p className="text-slate-500">Yükleniyor...</p>;
   if (isError || !data) return <p className="text-red-600">İstatistikler yüklenemedi.</p>;
@@ -25,6 +28,35 @@ export default function Stats() {
   return (
     <div>
       <h2 className="mb-6 text-lg font-semibold text-slate-700">İstatistik</h2>
+
+      {me?.user?.role === 'admin' && (
+        <div className="mb-6 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => optimize.mutate()}
+              disabled={optimize.isPending}
+              className="rounded-lg bg-slate-700 px-4 py-2 text-white hover:bg-slate-800 disabled:opacity-60"
+            >
+              {optimize.isPending ? 'Optimize ediliyor...' : 'FSRS Parametrelerini Optimize Et'}
+            </button>
+            <span className="text-xs text-slate-500">(kullanıcı başına en az 20 tekrar gerekli)</span>
+          </div>
+          {optimize.isSuccess && (
+            <ul className="mt-3 space-y-1 text-sm">
+              {optimize.data.results.map((r) => (
+                <li key={r.user_id} className="text-slate-600">
+                  <span className="font-medium">{r.username}</span>: {r.optimized
+                    ? r.review_count + ' tekrar ile optimize edildi ✓'
+                    : (r.error ?? r.review_count + ' tekrar (yetersiz)')}
+                </li>
+              ))}
+            </ul>
+          )}
+          {optimize.isError && (
+            <p className="mt-2 text-sm text-red-600">{(optimize.error as Error).message}</p>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card title="Doğruluk Oranı">

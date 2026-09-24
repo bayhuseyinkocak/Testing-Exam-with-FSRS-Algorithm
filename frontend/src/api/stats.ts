@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from './client';
 
 export type StatsOverview = {
@@ -27,5 +27,19 @@ export function useStatsOverview() {
   return useQuery<StatsOverview>({
     queryKey: ['stats', 'overview'],
     queryFn: () => api('/stats/overview'),
+  });
+}
+
+export type OptimizeResult = {
+  user_id: number;
+  username: string;
+  review_count: number;
+  optimized: boolean;
+  error: string | null;
+};
+
+export function useOptimizeFsrs() {
+  return useMutation({
+    mutationFn: () => api<{ results: OptimizeResult[] }>('/stats/optimize', { method: 'POST' }),
   });
 }

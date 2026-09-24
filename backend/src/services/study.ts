@@ -2,6 +2,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { FSRS, generatorParameters, Rating, createEmptyCard, type Card, type State, type Grade } from 'ts-fsrs';
 import { db, questions, userQuestionFsrs, reviewLogs } from '../db';
 import { buildQuestionTree, type QuestionTree } from './questions';
+import { getUserW } from './optimizer';
 
 const fsrs = new FSRS(generatorParameters());
 
@@ -175,7 +176,9 @@ export async function submitAnswer(
   const row = rows[0];
 
   const card = row ? rowToCard(row) : createEmptyCard(now);
-  const result = fsrs.next(card, now, rating);
+  const userW = await getUserW(userId);
+  const scheduler = userW ? new FSRS({ ...generatorParameters(), w: userW }) : fsrs;
+  const result = scheduler.next(card, now, rating);
   const newCard = result.card;
 
   if (row) {

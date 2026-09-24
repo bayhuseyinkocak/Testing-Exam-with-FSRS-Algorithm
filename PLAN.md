@@ -160,7 +160,7 @@ GET  /api/stats/overview
 ### Faz 4 — İstatistik ve İyileştirme
 - [x] Kullanıcı paneli: doğruluk oranı, günlük ilerleme, yaklaşan tekrarlar
 - [x] Sınav bazlı çalışma seçimi (AB-730 / AB-731 / Almanca B2)
-- [ ] FSRS parametrelerini kullanıcı verisine göre optimize etme (opsiyonel — ertelendi)
+- [x] FSRS parametrelerini kullanıcı verisine göre optimize etme
 
 ### Faz 5 — Yayınlama
 - [x] Sunucuya deploy (Vercel + Neon + Cloudflare)

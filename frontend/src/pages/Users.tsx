@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useUsers, useCreateUser, useDeleteUser } from '../api/users';
+import { useUsers, useCreateUser, useDeleteUser, useChangePassword, type User } from '../api/users';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -10,10 +10,28 @@ export default function Users() {
   const { data, isLoading, isError } = useUsers();
   const createUser = useCreateUser();
   const deleteUser = useDeleteUser();
+  const changePassword = useChangePassword();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'user'>('user');
   const [error, setError] = useState<string | null>(null);
+
+  const handleChangePassword = (u: User) => {
+    const newPassword = window.prompt('Yeni şifre (' + u.username + '):');
+    if (!newPassword) return;
+    if (newPassword.length < 6) {
+      setError('Şifre en az 6 karakter olmalı');
+      return;
+    }
+    setError(null);
+    changePassword.mutate(
+      { id: u.id, password: newPassword },
+      {
+        onSuccess: () => {},
+        onError: (err) => setError((err as Error).message),
+      },
+    );
+  };
 
   const handleCreate = (e: FormEvent) => {
     e.preventDefault();
@@ -111,16 +129,24 @@ export default function Users() {
                 <td className="px-4 py-3 text-slate-600">{u.review_count}</td>
                 <td className="px-4 py-3 text-slate-500">{formatDate(u.created_at)}</td>
                 <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Kullanıcı silinsin mi? Tüm çalışma verileri de silinecek.')) {
-                        deleteUser.mutate(u.id);
-                      }
-                    }}
-                    className="text-red-600 hover:underline"
-                  >
-                    Sil
-                  </button>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={() => handleChangePassword(u)}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Şifre
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (window.confirm('Kullanıcı silinsin mi? Tüm çalışma verileri de silinecek.')) {
+                          deleteUser.mutate(u.id);
+                        }
+                      }}
+                      className="text-red-600 hover:underline"
+                    >
+                      Sil
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

@@ -11,6 +11,10 @@ const createUserSchema = z.object({
   role: z.enum(['admin', 'user']).default('user'),
 });
 
+const changePasswordSchema = z.object({
+  password: z.string().min(6).max(200),
+});
+
 export default async function userRoutes(app: FastifyInstance) {
   app.get('/', { preHandler: [requireAdmin] }, async () => {
     const list = await db.select().from(users).orderBy(asc(users.created_at));
@@ -55,6 +59,22 @@ export default async function userRoutes(app: FastifyInstance) {
     const id = result[0].id;
 
     return reply.code(201).send({ user: { id, username, role } });
+  });
+
+  app.put('/:id/password', { preHandler: [requireAdmin] }, async (request, reply) => {
+    const id = Number((request.params as { id: string }).id);
+    const parsed = changePasswordSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: 'Geçersiz şifre',
+        details: parsed.error.issues.map((i) => i.message),
+      });
+    }
+    const rows = await db.select({ id: users.id }).from(users).where(eq(users.id, id)).limit(1);
+    if (rows.length === 0) return reply.code(404).send({ error: 'Kullanıcı bulunamadı' });
+    const passwordHash = await hash(parsed.data.password, 10);
+    await db.update(users).set({ password_hash: passwordHash }).where(eq(users.id, id));
+    return { ok: true };
   });
 
   app.delete('/:id', { preHandler: [requireAdmin] }, async (request, reply) => {
