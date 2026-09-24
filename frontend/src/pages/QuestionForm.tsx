@@ -58,6 +58,7 @@ export default function QuestionForm() {
   const [type, setType] = useState<QuestionType>('single');
   const [questionText, setQuestionText] = useState('');
   const [explanation, setExplanation] = useState('');
+  const [translation, setTranslation] = useState('');
   const [topicId, setTopicId] = useState('0');
   const [options, setOptions] = useState<OptionRow[]>(emptyOptions(4));
   const [statements, setStatements] = useState<StatementRow[]>([]);
@@ -70,6 +71,7 @@ export default function QuestionForm() {
     setType(q.type);
     setQuestionText(q.question_text);
     setExplanation(q.explanation ?? '');
+    setTranslation(q.translation ?? '');
     setTopicId(q.topic_id != null ? String(q.topic_id) : '0');
     setOptions(q.options.map((o) => ({ option_text: o.option_text, is_correct: o.is_correct })));
     setStatements(q.statements.map((s) => ({ statement_text: s.statement_text, correct_value: s.correct_value })));
@@ -117,6 +119,7 @@ export default function QuestionForm() {
       type,
       question_text: questionText,
       explanation: explanation || null,
+      translation: translation || null,
       topic_id: topicId === '0' ? null : Number(topicId),
     };
     if (type === 'single' || type === 'multiple') {
@@ -198,6 +201,19 @@ export default function QuestionForm() {
             onChange={(e) => setExplanation(e.target.value)}
             rows={2}
             className="w-full rounded-lg border border-slate-300 px-3 py-2"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-600">
+            Türkçe Tercüme (soru + cevaplar, tek kutu, isteğe bağlı)
+          </label>
+          <textarea
+            value={translation}
+            onChange={(e) => setTranslation(e.target.value)}
+            rows={3}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2"
+            placeholder="Soru ve cevapların Türkçe çevirisini buraya yazın"
           />
         </div>
 

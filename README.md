@@ -6,6 +6,7 @@ sertifika sınavlarına hazırlık web uygulaması. Detaylı kararlar: [PLAN.md]
 ## Özellikler
 
 - **4 soru tipi:** tek seçim, çoklu seçim, doğru/yanlış, boşluk doldurma
+- **Türkçe tercüme alanı:** her soru için tek kutuda soru + cevap çevirisi (çalışma ekranında referans)
 - **FSRS tekrar planlaması:** her kullanıcı × soru için kişisel kart; akıllı aralıklarla tekrar
 - **Çalışma akışı:** cevabı işaretle → kontrol et → anlık geri bildirim → (İyi/Kolay/Tekrar) değerlendir
 - **Soru bankası yönetimi:** admin için sınav / konu / soru CRUD
@@ -118,11 +119,12 @@ Puanlama: Yanlış → `again`, Doğru → `good` / `easy`.
 
 ### CSV / Excel
 
-Başlık satırı zorunludur: `type,question_text,explanation,choices,correct`
+Başlık satırı zorunludur: `type,question_text,explanation,translation,choices,correct`
 
 - `type`: single | multiple | true_false | fill_blank
 - `question_text`: soru metni (fill_blank için boşluğu `___` ile işaretleyin)
 - `explanation`: açıklama (opsiyonel)
+- `translation`: Türkçe tercüme — soru + cevaplar tek kutuda (opsiyonel)
 - `choices`: seçenekler, `|` ile ayrılır (örn. `A|B|C|D`; true_false için ifadeler)
 - `correct`: doğru cevap, 1 tabanlı indeks, virgülle ayrılır:
   - single → tek sayı (örn. `2`)
@@ -131,11 +133,11 @@ Başlık satırı zorunludur: `type,question_text,explanation,choices,correct`
   - fill_blank → tek sayı (tek boşluk; çok boşluk için JSON kullanın)
 
 ```csv
-type,question_text,explanation,choices,correct
-single,2+2 kaçtır?,Temel matematik,3|4|5|6,2
-multiple,Asal sayıları seç,,2|3|4|5,1,2
-true_false,İfadeleri değerlendir,,"Gökyüzü mavidir|Su 50C'de kaynar",T,F
-fill_blank,Ich ___ Wasser,Almanca fiil,trinke|esse|gehe|schlafe,1
+type,question_text,explanation,translation,choices,correct
+single,2+2 kaçtır?,Temel matematik,2+2 kaçtır? Cevap 4,3|4|5|6,2
+multiple,Asal sayıları seç,,Asal sayılar: 2,3,5,2|3|4|5,1,2
+true_false,İfadeleri değerlendir,,,Gökyüzü mavidir|Su 50C'de kaynar,T,F
+fill_blank,Ich ___ Wasser,Almanca fiil,Ich ___ Wasser (su içerim),trinke|esse|gehe|schlafe,1
 ```
 
 ### JSON

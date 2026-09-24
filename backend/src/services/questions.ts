@@ -24,6 +24,7 @@ export const questionInputSchema = z.object({
   type: z.enum(['single', 'multiple', 'true_false', 'fill_blank']),
   question_text: z.string().min(1, 'Soru metni boş olamaz'),
   explanation: z.string().optional().nullable(),
+  translation: z.string().optional().nullable(),
   topic_id: z.number().int().positive().optional().nullable(),
   order: z.number().int().optional(),
   options: z.array(optionSchema).optional(),
@@ -93,6 +94,7 @@ export type QuestionTree = {
   type: 'single' | 'multiple' | 'true_false' | 'fill_blank';
   question_text: string;
   explanation: string | null;
+  translation: string | null;
   order: number;
   options: { id: number; option_text: string; is_correct: boolean; order: number }[];
   statements: { id: number; statement_text: string; correct_value: boolean }[];
@@ -126,6 +128,7 @@ export function buildQuestionTree(q: Question): QuestionTree {
     type: q.type,
     question_text: q.question_text,
     explanation: q.explanation,
+    translation: q.translation,
     order: q.order,
     options: opts.map((o) => ({
       id: o.id,
@@ -196,6 +199,7 @@ export function insertQuestion(examId: number, data: QuestionInput): number {
         type: data.type,
         question_text: data.question_text,
         explanation: data.explanation ?? null,
+        translation: data.translation ?? null,
         order: data.order ?? 0,
       })
       .run();
@@ -213,6 +217,7 @@ export function updateQuestion(questionId: number, data: QuestionInput): void {
         type: data.type,
         question_text: data.question_text,
         explanation: data.explanation ?? null,
+        translation: data.translation ?? null,
         order: data.order ?? 0,
       })
       .where(eq(questions.id, questionId))

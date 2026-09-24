@@ -14,6 +14,7 @@ export type Question = {
   type: QuestionType;
   question_text: string;
   explanation: string | null;
+  translation: string | null;
   order: number;
   options: QuestionOption[];
   statements: QuestionStatement[];
@@ -24,6 +25,7 @@ export type QuestionInput = {
   type: QuestionType;
   question_text: string;
   explanation?: string | null;
+  translation?: string | null;
   topic_id?: number | null;
   options?: { option_text: string; is_correct: boolean; order?: number }[];
   statements?: { statement_text: string; correct_value: boolean }[];

@@ -4,6 +4,7 @@ export type QuestionInputLoose = {
   type: string;
   question_text: string;
   explanation?: string | null;
+  translation?: string | null;
   topic_id?: number | null;
   order?: number;
   options?: { option_text: string; is_correct: boolean; order?: number }[];
@@ -112,6 +113,9 @@ function normalizeHeader(h: string): string | null {
     explanation: 'explanation',
     aciklama: 'explanation',
     açıklama: 'explanation',
+    translation: 'translation',
+    tercume: 'translation',
+    çeviri: 'translation',
     choices: 'choices',
     options: 'choices',
     secenekler: 'choices',
@@ -153,6 +157,7 @@ export function rowsToQuestions(rows: string[][]): {
     const questionText = get('question_text');
     if (!questionText) continue;
     const explanation = get('explanation') || undefined;
+    const translation = get('translation') || undefined;
     const choices = get('choices').split('|').map((s) => s.trim()).filter(Boolean);
     const correctParts = get('correct').split(',').map((s) => s.trim()).filter(Boolean);
 
@@ -171,7 +176,7 @@ export function rowsToQuestions(rows: string[][]): {
           if (!Number.isNaN(idx) && idx >= 0 && idx < opts.length) opts[idx].is_correct = true;
         }
       }
-      q = { type, question_text: questionText, explanation, options: opts };
+      q = { type, question_text: questionText, explanation, translation, options: opts };
     } else if (type === 'true_false') {
       const stmts = choices.map((text) => ({ statement_text: text, correct_value: false }));
       if (stmts.length < 1) continue;
@@ -181,7 +186,7 @@ export function rowsToQuestions(rows: string[][]): {
           stmts[i].correct_value = t === 't' || t === 'true' || t === '1' || t === 'doğru' || t === 'dogru';
         }
       });
-      q = { type, question_text: questionText, explanation, statements: stmts };
+      q = { type, question_text: questionText, explanation, translation, statements: stmts };
     } else if (type === 'fill_blank') {
       const idx = parseInt(correctParts[0] ?? '', 10) - 1;
       if (Number.isNaN(idx) || idx < 0 || idx >= choices.length) continue;
@@ -189,6 +194,7 @@ export function rowsToQuestions(rows: string[][]): {
         type,
         question_text: questionText,
         explanation,
+        translation,
         blanks: [{ position: 1, options: choices, correct_index: idx }],
       };
     } else {

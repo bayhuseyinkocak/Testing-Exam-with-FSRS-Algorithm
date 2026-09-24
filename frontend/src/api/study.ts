@@ -21,6 +21,7 @@ export type StudyQuestion = {
   type: QuestionType;
   question_text: string;
   explanation: string | null;
+  translation: string | null;
   order: number;
   options: StudyOption[];
   statements: StudyStatement[];

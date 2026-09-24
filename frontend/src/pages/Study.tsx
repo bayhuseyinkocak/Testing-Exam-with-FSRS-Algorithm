@@ -307,6 +307,12 @@ export default function Study() {
               </div>
             )}
 
+            {q.translation && (
+              <div className="mb-4 whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+                <span className="font-medium">Türkçe Tercüme:</span> {q.translation}
+              </div>
+            )}
+
             <div className="flex items-center gap-3">
               <span className="text-sm text-slate-500">Bilgi durumunuzu değerlendirin:</span>
               {feedback.is_correct ? (

@@ -28,6 +28,7 @@ export const questions = sqliteTable('questions', {
   type: text('type', { enum: ['single', 'multiple', 'true_false', 'fill_blank'] }).notNull(),
   question_text: text('question_text').notNull(),
   explanation: text('explanation'),
+  translation: text('translation'),
   order: integer('order').notNull().default(0),
 });
 
