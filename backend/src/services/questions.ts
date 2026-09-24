@@ -101,25 +101,22 @@ export type QuestionTree = {
   blanks: { id: number; position: number; options: string[]; correct_index: number }[];
 };
 
-export function buildQuestionTree(q: Question): QuestionTree {
-  const opts = db
+export async function buildQuestionTree(q: Question): Promise<QuestionTree> {
+  const opts = await db
     .select()
     .from(options)
     .where(eq(options.question_id, q.id))
-    .orderBy(asc(options.order), asc(options.id))
-    .all();
-  const stmts = db
+    .orderBy(asc(options.order), asc(options.id));
+  const stmts = await db
     .select()
     .from(statements)
     .where(eq(statements.question_id, q.id))
-    .orderBy(asc(statements.id))
-    .all();
-  const blks = db
+    .orderBy(asc(statements.id));
+  const blks = await db
     .select()
     .from(blanks)
     .where(eq(blanks.question_id, q.id))
-    .orderBy(asc(blanks.position))
-    .all();
+    .orderBy(asc(blanks.position));
 
   return {
     id: q.id,
@@ -151,47 +148,47 @@ export function buildQuestionTree(q: Question): QuestionTree {
 }
 
 // ---------- Yazma işlemleri ----------
-function insertSubEntities(tx: any, questionId: number, data: QuestionInput) {
+async function insertSubEntities(tx: any, questionId: number, data: QuestionInput) {
   if (data.options) {
-    data.options.forEach((o, i) => {
-      tx.insert(options)
+    for (const [i, o] of data.options.entries()) {
+      await tx
+        .insert(options)
         .values({
           question_id: questionId,
           option_text: o.option_text,
           is_correct: o.is_correct,
           order: o.order ?? i,
-        })
-        .run();
-    });
+        });
+    }
   }
   if (data.statements) {
-    data.statements.forEach((s) => {
-      tx.insert(statements)
+    for (const s of data.statements) {
+      await tx
+        .insert(statements)
         .values({
           question_id: questionId,
           statement_text: s.statement_text,
           correct_value: s.correct_value,
-        })
-        .run();
-    });
+        });
+    }
   }
   if (data.blanks) {
-    data.blanks.forEach((b) => {
-      tx.insert(blanks)
+    for (const b of data.blanks) {
+      await tx
+        .insert(blanks)
         .values({
           question_id: questionId,
           position: b.position,
           options_json: JSON.stringify(b.options),
           correct_index: b.correct_index,
-        })
-        .run();
-    });
+        });
+    }
   }
 }
 
-export function insertQuestion(examId: number, data: QuestionInput): number {
-  return db.transaction((tx) => {
-    const result = tx
+export async function insertQuestion(examId: number, data: QuestionInput): Promise<number> {
+  return await db.transaction(async (tx) => {
+    const result = await tx
       .insert(questions)
       .values({
         exam_id: examId,
@@ -202,16 +199,17 @@ export function insertQuestion(examId: number, data: QuestionInput): number {
         translation: data.translation ?? null,
         order: data.order ?? 0,
       })
-      .run();
-    const questionId = Number(result.lastInsertRowid);
-    insertSubEntities(tx, questionId, data);
+      .returning({ id: questions.id });
+    const questionId = result[0].id;
+    await insertSubEntities(tx, questionId, data);
     return questionId;
   });
 }
 
-export function updateQuestion(questionId: number, data: QuestionInput): void {
-  db.transaction((tx) => {
-    tx.update(questions)
+export async function updateQuestion(questionId: number, data: QuestionInput): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx
+      .update(questions)
       .set({
         topic_id: data.topic_id ?? null,
         type: data.type,
@@ -220,11 +218,10 @@ export function updateQuestion(questionId: number, data: QuestionInput): void {
         translation: data.translation ?? null,
         order: data.order ?? 0,
       })
-      .where(eq(questions.id, questionId))
-      .run();
-    tx.delete(options).where(eq(options.question_id, questionId)).run();
-    tx.delete(statements).where(eq(statements.question_id, questionId)).run();
-    tx.delete(blanks).where(eq(blanks.question_id, questionId)).run();
-    insertSubEntities(tx, questionId, data);
+      .where(eq(questions.id, questionId));
+    await tx.delete(options).where(eq(options.question_id, questionId));
+    await tx.delete(statements).where(eq(statements.question_id, questionId));
+    await tx.delete(blanks).where(eq(blanks.question_id, questionId));
+    await insertSubEntities(tx, questionId, data);
   });
 }

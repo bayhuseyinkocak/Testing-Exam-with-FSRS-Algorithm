@@ -14,24 +14,21 @@ function accuracyOf(logs: { is_correct: boolean }[]): number | null {
   return Math.round((correct / logs.length) * 1000) / 1000;
 }
 
-export function getOverview(userId: number) {
+export async function getOverview(userId: number) {
   const now = new Date();
   const DAY = 24 * 60 * 60 * 1000;
 
-  const examsList = db.select().from(exams).orderBy(asc(exams.name)).all();
-  const qs = db.select({ id: questions.id, exam_id: questions.exam_id }).from(questions).all();
-  const logs = db.select().from(reviewLogs).where(eq(reviewLogs.user_id, userId)).all();
-  const cards = db.select().from(userQuestionFsrs).where(eq(userQuestionFsrs.user_id, userId)).all();
+  const examsList = await db.select().from(exams).orderBy(asc(exams.name));
+  const qs = await db.select({ id: questions.id, exam_id: questions.exam_id }).from(questions);
+  const logs = await db.select().from(reviewLogs).where(eq(reviewLogs.user_id, userId));
+  const cards = await db.select().from(userQuestionFsrs).where(eq(userQuestionFsrs.user_id, userId));
 
   const cardQuestionIds = new Set(cards.map((c) => c.question_id));
   const examQuestionCount = new Map<number, number>();
   for (const q of qs) {
     examQuestionCount.set(q.exam_id, (examQuestionCount.get(q.exam_id) ?? 0) + 1);
   }
-  const questionExam = new Map<number, number>();
-  for (const q of qs) questionExam.set(q.id, q.exam_id);
 
-  // Doğruluk oranı
   const totalReviews = logs.length;
   const correctReviews = logs.filter((l) => l.is_correct).length;
   const cutoff7 = now.getTime() - 7 * DAY;
@@ -39,7 +36,6 @@ export function getOverview(userId: number) {
   const last7 = logs.filter((l) => l.answered_at.getTime() >= cutoff7);
   const last30 = logs.filter((l) => l.answered_at.getTime() >= cutoff30);
 
-  // Günlük ilerleme (son 14 gün)
   const daily_progress: { date: string; reviews: number; correct: number }[] = [];
   for (let d = 13; d >= 0; d--) {
     const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - d, 0, 0, 0, 0);
@@ -55,7 +51,6 @@ export function getOverview(userId: number) {
     });
   }
 
-  // Yaklaşan tekrarlar
   const newCount = qs.filter((q) => !cardQuestionIds.has(q.id)).length;
   const dueNowCards = cards.filter((c) => c.due.getTime() <= now.getTime()).length;
   const tomorrowEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2, 0, 0, 0, 0);
@@ -63,7 +58,6 @@ export function getOverview(userId: number) {
   const dueTomorrow = cards.filter((c) => c.due.getTime() > now.getTime() && c.due.getTime() < tomorrowEnd.getTime()).length;
   const dueNext7 = cards.filter((c) => c.due.getTime() > now.getTime() && c.due.getTime() <= weekEnd).length;
 
-  // Kart durumları
   let learning = 0;
   let review = 0;
   let relearning = 0;
@@ -73,7 +67,6 @@ export function getOverview(userId: number) {
     else if (c.state === 3) relearning++;
   }
 
-  // Sınav bazlı
   const examsStats = examsList.map((e) => {
     const total = examQuestionCount.get(e.id) ?? 0;
     const examQuestionIds = new Set(qs.filter((q) => q.exam_id === e.id).map((q) => q.id));

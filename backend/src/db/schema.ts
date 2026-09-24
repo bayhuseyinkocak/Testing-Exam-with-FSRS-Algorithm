@@ -1,90 +1,103 @@
-import { sqliteTable, text, integer, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import {
+  pgTable,
+  pgEnum,
+  text,
+  integer,
+  doublePrecision,
+  timestamp,
+  boolean,
+  uniqueIndex,
+  serial,
+} from 'drizzle-orm/pg-core';
 
-export const users = sqliteTable('users', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const roleEnum = pgEnum('role', ['admin', 'user']);
+export const questionTypeEnum = pgEnum('question_type', ['single', 'multiple', 'true_false', 'fill_blank']);
+
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
   username: text('username').notNull().unique(),
   password_hash: text('password_hash').notNull(),
-  role: text('role', { enum: ['admin', 'user'] }).notNull().default('user'),
-  created_at: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  role: roleEnum('role').notNull().default('user'),
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const exams = sqliteTable('exams', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const exams = pgTable('exams', {
+  id: serial('id').primaryKey(),
   name: text('name').notNull(),
   code: text('code').notNull().unique(),
   description: text('description'),
 });
 
-export const topics = sqliteTable('topics', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const topics = pgTable('topics', {
+  id: serial('id').primaryKey(),
   exam_id: integer('exam_id').notNull().references(() => exams.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
 });
 
-export const questions = sqliteTable('questions', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const questions = pgTable('questions', {
+  id: serial('id').primaryKey(),
   exam_id: integer('exam_id').notNull().references(() => exams.id, { onDelete: 'cascade' }),
   topic_id: integer('topic_id').references(() => topics.id, { onDelete: 'set null' }),
-  type: text('type', { enum: ['single', 'multiple', 'true_false', 'fill_blank'] }).notNull(),
+  type: questionTypeEnum('type').notNull(),
   question_text: text('question_text').notNull(),
   explanation: text('explanation'),
   translation: text('translation'),
   order: integer('order').notNull().default(0),
 });
 
-export const options = sqliteTable('options', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const options = pgTable('options', {
+  id: serial('id').primaryKey(),
   question_id: integer('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
   option_text: text('option_text').notNull(),
-  is_correct: integer('is_correct', { mode: 'boolean' }).notNull().default(false),
+  is_correct: boolean('is_correct').notNull().default(false),
   order: integer('order').notNull().default(0),
 });
 
-export const statements = sqliteTable('statements', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const statements = pgTable('statements', {
+  id: serial('id').primaryKey(),
   question_id: integer('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
   statement_text: text('statement_text').notNull(),
-  correct_value: integer('correct_value', { mode: 'boolean' }).notNull().default(false),
+  correct_value: boolean('correct_value').notNull().default(false),
 });
 
-export const blanks = sqliteTable('blanks', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const blanks = pgTable('blanks', {
+  id: serial('id').primaryKey(),
   question_id: integer('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
   position: integer('position').notNull(),
   options_json: text('options_json').notNull(),
   correct_index: integer('correct_index').notNull(),
 });
 
-export const userQuestionFsrs = sqliteTable(
+export const userQuestionFsrs = pgTable(
   'user_question_fsrs',
   {
-    id: integer('id').primaryKey({ autoIncrement: true }),
+    id: serial('id').primaryKey(),
     user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
     question_id: integer('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
-    due: integer('due', { mode: 'timestamp' }).notNull(),
-    stability: real('stability').notNull(),
-    difficulty: real('difficulty').notNull(),
-    elapsed_days: real('elapsed_days').notNull().default(0),
-    scheduled_days: real('scheduled_days').notNull().default(0),
+    due: timestamp('due', { withTimezone: true }).notNull(),
+    stability: doublePrecision('stability').notNull(),
+    difficulty: doublePrecision('difficulty').notNull(),
+    elapsed_days: doublePrecision('elapsed_days').notNull().default(0),
+    scheduled_days: doublePrecision('scheduled_days').notNull().default(0),
     reps: integer('reps').notNull().default(0),
     lapses: integer('lapses').notNull().default(0),
     state: integer('state').notNull().default(0),
     learning_steps: integer('learning_steps').notNull().default(0),
-    last_review: integer('last_review', { mode: 'timestamp' }),
+    last_review: timestamp('last_review', { withTimezone: true }),
   },
   (t) => [uniqueIndex('uq_user_question').on(t.user_id, t.question_id)],
 );
 
-export const reviewLogs = sqliteTable('review_logs', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const reviewLogs = pgTable('review_logs', {
+  id: serial('id').primaryKey(),
   user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   question_id: integer('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
   rating: text('rating').notNull(),
-  is_correct: integer('is_correct', { mode: 'boolean' }).notNull(),
+  is_correct: boolean('is_correct').notNull(),
   selected_options: text('selected_options'),
-  answered_at: integer('answered_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-  new_interval: real('new_interval'),
-  new_stability: real('new_stability'),
+  answered_at: timestamp('answered_at', { withTimezone: true }).notNull().defaultNow(),
+  new_interval: doublePrecision('new_interval'),
+  new_stability: doublePrecision('new_stability'),
 });
 
 export type User = typeof users.$inferSelect;

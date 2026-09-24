@@ -27,10 +27,10 @@ export default async function studyRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.code(400).send({ error: 'exam_id gerekli' });
     const examId = parsed.data.exam_id;
 
-    const exam = db.select({ id: exams.id }).from(exams).where(eq(exams.id, examId)).get();
-    if (!exam) return reply.code(404).send({ error: 'Sınav bulunamadı' });
+    const exam = await db.select({ id: exams.id }).from(exams).where(eq(exams.id, examId)).limit(1);
+    if (exam.length === 0) return reply.code(404).send({ error: 'Sınav bulunamadı' });
 
-    const dueQuestions = getDueQuestions(request.user.id, examId);
+    const dueQuestions = await getDueQuestions(request.user.id, examId);
     return { total_due: dueQuestions.length, questions: dueQuestions };
   });
 
@@ -39,10 +39,11 @@ export default async function studyRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.code(400).send({ error: 'Geçersiz veri' });
     const { question_id, selected } = parsed.data;
 
-    const q = db.select().from(questions).where(eq(questions.id, question_id)).get();
+    const rows = await db.select().from(questions).where(eq(questions.id, question_id)).limit(1);
+    const q = rows[0];
     if (!q) return reply.code(404).send({ error: 'Soru bulunamadı' });
 
-    const result = checkAnswer(buildQuestionTree(q), selected);
+    const result = checkAnswer(await buildQuestionTree(q), selected);
     return { is_correct: result.is_correct, correct_answer: result.correct_answer, explanation: q.explanation };
   });
 
@@ -51,10 +52,11 @@ export default async function studyRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.code(400).send({ error: 'Geçersiz veri' });
     const { question_id, rating, selected } = parsed.data;
 
-    const q = db.select().from(questions).where(eq(questions.id, question_id)).get();
+    const rows = await db.select().from(questions).where(eq(questions.id, question_id)).limit(1);
+    const q = rows[0];
     if (!q) return reply.code(404).send({ error: 'Soru bulunamadı' });
 
-    const result = submitAnswer(request.user.id, buildQuestionTree(q), rating, selected);
+    const result = await submitAnswer(request.user.id, await buildQuestionTree(q), rating, selected);
     return { is_correct: result.is_correct, correct_answer: result.correct_answer, card: result.card };
   });
 }

@@ -64,47 +64,44 @@ function cardToStudyCard(card: Card): StudyCard {
   };
 }
 
-export function getDueQuestions(userId: number, examId: number): StudyQuestion[] {
+export async function getDueQuestions(userId: number, examId: number): Promise<StudyQuestion[]> {
   const now = new Date();
-  const qs = db
+  const qs = await db
     .select()
     .from(questions)
     .where(eq(questions.exam_id, examId))
-    .orderBy(asc(questions.order), asc(questions.id))
-    .all();
+    .orderBy(asc(questions.order), asc(questions.id));
 
   const result: StudyQuestion[] = [];
   for (const q of qs) {
-    const row = db
+    const rows = await db
       .select()
       .from(userQuestionFsrs)
       .where(and(eq(userQuestionFsrs.user_id, userId), eq(userQuestionFsrs.question_id, q.id)))
-      .get();
+      .limit(1);
+    const row = rows[0];
 
     if (!row) {
       const card = createEmptyCard(now);
-      result.push({ ...buildQuestionTree(q), card: cardToStudyCard(card) });
+      result.push({ ...(await buildQuestionTree(q)), card: cardToStudyCard(card) });
     } else if (row.due.getTime() <= now.getTime()) {
-      result.push({ ...buildQuestionTree(q), card: cardToStudyCard(rowToCard(row)) });
+      result.push({ ...(await buildQuestionTree(q)), card: cardToStudyCard(rowToCard(row)) });
     }
   }
   return result;
 }
 
-export function countDueQuestions(userId: number, examId: number): number {
+export async function countDueQuestions(userId: number, examId: number): Promise<number> {
   const now = new Date();
-  const qs = db
-    .select({ id: questions.id })
-    .from(questions)
-    .where(eq(questions.exam_id, examId))
-    .all();
+  const qs = await db.select({ id: questions.id }).from(questions).where(eq(questions.exam_id, examId));
   let count = 0;
   for (const q of qs) {
-    const row = db
+    const rows = await db
       .select({ due: userQuestionFsrs.due })
       .from(userQuestionFsrs)
       .where(and(eq(userQuestionFsrs.user_id, userId), eq(userQuestionFsrs.question_id, q.id)))
-      .get();
+      .limit(1);
+    const row = rows[0];
     if (!row) count++;
     else if (row.due.getTime() <= now.getTime()) count++;
   }
@@ -160,49 +157,48 @@ export type AnswerResult = {
   card: StudyCard;
 };
 
-export function submitAnswer(
+export async function submitAnswer(
   userId: number,
   question: QuestionTree,
   ratingLabel: string,
   selected: unknown,
-): AnswerResult {
+): Promise<AnswerResult> {
   const now = new Date();
   const check = checkAnswer(question, selected);
   const rating = RATING_MAP[ratingLabel] ?? Rating.Good;
 
-  const row = db
+  const rows = await db
     .select()
     .from(userQuestionFsrs)
     .where(and(eq(userQuestionFsrs.user_id, userId), eq(userQuestionFsrs.question_id, question.id)))
-    .get();
+    .limit(1);
+  const row = rows[0];
 
   const card = row ? rowToCard(row) : createEmptyCard(now);
   const result = fsrs.next(card, now, rating);
   const newCard = result.card;
 
   if (row) {
-    db.update(userQuestionFsrs)
+    await db
+      .update(userQuestionFsrs)
       .set(cardToRow(newCard, now))
-      .where(eq(userQuestionFsrs.id, row.id))
-      .run();
+      .where(eq(userQuestionFsrs.id, row.id));
   } else {
-    db.insert(userQuestionFsrs)
-      .values({ user_id: userId, question_id: question.id, ...cardToRow(newCard, now) })
-      .run();
+    await db
+      .insert(userQuestionFsrs)
+      .values({ user_id: userId, question_id: question.id, ...cardToRow(newCard, now) });
   }
 
-  db.insert(reviewLogs)
-    .values({
-      user_id: userId,
-      question_id: question.id,
-      rating: ratingLabel,
-      is_correct: check.is_correct,
-      selected_options: JSON.stringify(selected),
-      answered_at: now,
-      new_interval: newCard.scheduled_days,
-      new_stability: newCard.stability,
-    })
-    .run();
+  await db.insert(reviewLogs).values({
+    user_id: userId,
+    question_id: question.id,
+    rating: ratingLabel,
+    is_correct: check.is_correct,
+    selected_options: JSON.stringify(selected),
+    answered_at: now,
+    new_interval: newCard.scheduled_days,
+    new_stability: newCard.stability,
+  });
 
   return {
     is_correct: check.is_correct,

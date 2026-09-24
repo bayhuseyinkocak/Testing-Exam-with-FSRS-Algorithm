@@ -27,7 +27,7 @@ Kullanıcıların farklı sertifika sınavlarına (örn. Microsoft AB-730, Micro
 | ORM | Drizzle (veya Prisma) — karar: Drizzle tercih edildi |
 | Veritabanı | PostgreSQL (sunucuda); geliştirme sırasında SQLite de kullanılabilir |
 | Auth | Kullanıcı adı + şifre (bcrypt hash) + JWT |
-| Deploy | Docker + Caddy + PostgreSQL |
+| Deploy | Vercel (frontend) + Render (backend) + Neon (PostgreSQL) + Cloudflare (domain) |
 
 **Alternatif (onaylanmadı):** Python + FastAPI + `py-fsrs` (https://github.com/open-spaced-repetition/py-fsrs)
 
@@ -163,8 +163,8 @@ GET  /api/stats/overview
 - [ ] FSRS parametrelerini kullanıcı verisine göre optimize etme (opsiyonel — ertelendi)
 
 ### Faz 5 — Yayınlama
-- [ ] Sunucuya deploy (Docker + Caddy + PostgreSQL)
-- [ ] 10 kullanıcı için admin eliyle hesap açma
+- [ ] Sunucuya deploy (Vercel + Render + Neon + Cloudflare)
+- [x] 10 kullanıcı için admin eliyle hesap açma
 - [ ] Test ve düzeltmeler
 
 ---
@@ -182,3 +182,21 @@ Yeni bir session açtığınızda şu mesajı yazmanız yeterli:
 - FSRS resmi sitesi: https://github.com/open-spaced-repetition
 - TypeScript FSRS: https://github.com/open-spaced-repetition/ts-fsrs (npm: `ts-fsrs`)
 - Python FSRS (yedek alternatif): https://github.com/open-spaced-repetition/py-fsrs (pip: `fsrs`)
+
+---
+
+## 11. Deploy Mimarisi (Onaylandı)
+
+İlk yayın için platform kararı (ücretsiz, kişisel kullanım):
+
+| Katman | Platform |
+|---|---|
+| Frontend | Vercel (Hobby, statik SPA) |
+| Backend | Render (Web Service) |
+| Veritabanı | Neon (ücretsiz PostgreSQL) |
+| Domain | Cloudflare DNS → Vercel |
+
+- **Aynı origin:** Vercel `rewrites` ile `/api/*` → Render backend'e yönlendirilir; cookie/CORS sorunu olmaz.
+- Backend env: `DATABASE_URL` (Neon), `JWT_SECRET`, `NODE_ENV=production`, cookie `secure: true`.
+- Domain: Cloudflare'da `example.com` → Vercel. (Cross-domain gerekirse cookie `SameSite=None; Secure` + CORS(credentials).)
+- Eski hedef (Docker + Caddy + PostgreSQL) VPS senaryosu için opsiyonel kalır.

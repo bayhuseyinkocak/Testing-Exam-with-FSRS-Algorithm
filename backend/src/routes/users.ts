@@ -13,21 +13,22 @@ const createUserSchema = z.object({
 
 export default async function userRoutes(app: FastifyInstance) {
   app.get('/', { preHandler: [requireAdmin] }, async () => {
-    const list = db.select().from(users).orderBy(asc(users.created_at)).all();
-    const withCounts = list.map((u) => {
-      const row = db
-        .select({ c: count() })
-        .from(reviewLogs)
-        .where(eq(reviewLogs.user_id, u.id))
-        .get();
-      return {
-        id: u.id,
-        username: u.username,
-        role: u.role,
-        created_at: u.created_at,
-        review_count: row?.c ?? 0,
-      };
-    });
+    const list = await db.select().from(users).orderBy(asc(users.created_at));
+    const withCounts = await Promise.all(
+      list.map(async (u) => {
+        const rows = await db
+          .select({ c: count() })
+          .from(reviewLogs)
+          .where(eq(reviewLogs.user_id, u.id));
+        return {
+          id: u.id,
+          username: u.username,
+          role: u.role,
+          created_at: u.created_at,
+          review_count: rows[0]?.c ?? 0,
+        };
+      }),
+    );
     return { users: withCounts };
   });
 
@@ -41,14 +42,17 @@ export default async function userRoutes(app: FastifyInstance) {
     }
     const { username, password, role } = parsed.data;
 
-    const exists = db.select({ id: users.id }).from(users).where(eq(users.username, username)).get();
-    if (exists) {
+    const exists = await db.select({ id: users.id }).from(users).where(eq(users.username, username)).limit(1);
+    if (exists.length > 0) {
       return reply.code(409).send({ error: 'Bu kullanıcı adı zaten mevcut' });
     }
 
     const passwordHash = await hash(password, 10);
-    const result = db.insert(users).values({ username, password_hash: passwordHash, role }).run();
-    const id = Number(result.lastInsertRowid);
+    const result = await db
+      .insert(users)
+      .values({ username, password_hash: passwordHash, role })
+      .returning({ id: users.id });
+    const id = result[0].id;
 
     return reply.code(201).send({ user: { id, username, role } });
   });
@@ -58,17 +62,18 @@ export default async function userRoutes(app: FastifyInstance) {
     if (id === request.user.id) {
       return reply.code(400).send({ error: 'Kendi hesabınızı silemezsiniz' });
     }
-    const user = db.select().from(users).where(eq(users.id, id)).get();
+    const rows = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    const user = rows[0];
     if (!user) {
       return reply.code(404).send({ error: 'Kullanıcı bulunamadı' });
     }
     if (user.role === 'admin') {
-      const admins = db.select({ c: count() }).from(users).where(eq(users.role, 'admin')).get();
-      if ((admins?.c ?? 0) <= 1) {
+      const admins = await db.select({ c: count() }).from(users).where(eq(users.role, 'admin'));
+      if ((admins[0]?.c ?? 0) <= 1) {
         return reply.code(400).send({ error: 'Son admin kullanıcı silinemez' });
       }
     }
-    db.delete(users).where(eq(users.id, id)).run();
+    await db.delete(users).where(eq(users.id, id));
     return { ok: true };
   });
 }
