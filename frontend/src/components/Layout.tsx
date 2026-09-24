@@ -35,6 +35,11 @@ export default function Layout() {
                   Sınav Yönetimi
                 </NavLink>
               )}
+              {isAdmin && (
+                <NavLink to="/users" className={({ isActive }) => navClass(isActive)}>
+                  Kullanıcılar
+                </NavLink>
+              )}
             </nav>
           </div>
           <div className="flex items-center gap-3">

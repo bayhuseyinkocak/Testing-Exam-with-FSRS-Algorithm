@@ -70,7 +70,9 @@ Frontend geliştirme sunucusu `/api` isteklerini `http://127.0.0.1:8787` adresin
 | POST | /api/auth/login | Giriş (JWT'yi httpOnly cookie olarak set eder) |
 | GET | /api/auth/me | Oturumdaki kullanıcı |
 | POST | /api/auth/logout | Çıkış (cookie temizler) |
+| GET | /api/users | Kullanıcı listesi (sadece admin) |
 | POST | /api/users | Kullanıcı oluşturma (sadece admin) |
+| DELETE | /api/users/:id | Kullanıcı silme (sadece admin, kendini silemez) |
 
 ### Sınav ve Konu (yönetim: admin)
 
