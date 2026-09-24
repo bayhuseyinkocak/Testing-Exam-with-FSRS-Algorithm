@@ -1,4 +1,5 @@
-// SQLite -> PostgreSQL tek seferlik veri taşıma
+// SQLite -> PostgreSQL tek seferlik veri taşıma (bir kez çalıştırıldı, artık gerek yok)
+// Çalıştırmak gerekirse önce: pnpm add -D better-sqlite3 @types/better-sqlite3
 // Kullanım: SQLITE_PATH=./data/app.db DATABASE_URL=<pg-url> tsx scripts/migrate-sqlite-to-pg.ts
 import Database from 'better-sqlite3';
 import { Pool } from 'pg';

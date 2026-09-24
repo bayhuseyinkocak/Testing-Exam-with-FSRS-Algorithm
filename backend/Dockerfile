@@ -1,5 +1,5 @@
 # ---- Build ----
-FROM node:22-alpine AS build
+FROM node:22-slim AS build
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
@@ -8,7 +8,7 @@ COPY . .
 RUN pnpm build
 
 # ---- Runtime ----
-FROM node:22-alpine
+FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0

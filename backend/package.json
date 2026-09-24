@@ -27,10 +27,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.6.2",
     "@types/pg": "^8.23.1",
-    "better-sqlite3": "^13.0.3",
     "drizzle-kit": "^0.31.11",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3"
