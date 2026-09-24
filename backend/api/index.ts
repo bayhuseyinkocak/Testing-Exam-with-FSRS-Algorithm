@@ -9,7 +9,7 @@ async function getApp() {
 
 export default async function handler(req: any, res: any) {
   try {
-    // Vercel catch-all'da /api öneki bazı durumlarda düşebilir; normalize et
+    console.log('[handler]', req.method, req.url);
     if (req.url && !req.url.startsWith('/api')) {
       req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
     }
