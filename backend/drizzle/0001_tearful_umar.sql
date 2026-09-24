@@ -1,0 +1,1 @@
+ALTER TABLE `user_question_fsrs` ADD `learning_steps` integer DEFAULT 0 NOT NULL;

@@ -1,0 +1,60 @@
+import type { FastifyInstance } from 'fastify';
+import { eq } from 'drizzle-orm';
+import { z } from 'zod';
+import { db, exams, questions } from '../db';
+import { requireAuth } from '../plugins/auth';
+import { getDueQuestions, checkAnswer, submitAnswer } from '../services/study';
+import { buildQuestionTree } from '../services/questions';
+
+const dueQuerySchema = z.object({
+  exam_id: z.coerce.number().int().positive(),
+});
+
+const checkSchema = z.object({
+  question_id: z.number().int().positive(),
+  selected: z.unknown(),
+});
+
+const answerSchema = z.object({
+  question_id: z.number().int().positive(),
+  rating: z.enum(['again', 'hard', 'good', 'easy']),
+  selected: z.unknown(),
+});
+
+export default async function studyRoutes(app: FastifyInstance) {
+  app.get('/due', { preHandler: [requireAuth] }, async (request, reply) => {
+    const parsed = dueQuerySchema.safeParse(request.query);
+    if (!parsed.success) return reply.code(400).send({ error: 'exam_id gerekli' });
+    const examId = parsed.data.exam_id;
+
+    const exam = db.select({ id: exams.id }).from(exams).where(eq(exams.id, examId)).get();
+    if (!exam) return reply.code(404).send({ error: 'Sınav bulunamadı' });
+
+    const dueQuestions = getDueQuestions(request.user.id, examId);
+    return { total_due: dueQuestions.length, questions: dueQuestions };
+  });
+
+  app.post('/check', { preHandler: [requireAuth] }, async (request, reply) => {
+    const parsed = checkSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Geçersiz veri' });
+    const { question_id, selected } = parsed.data;
+
+    const q = db.select().from(questions).where(eq(questions.id, question_id)).get();
+    if (!q) return reply.code(404).send({ error: 'Soru bulunamadı' });
+
+    const result = checkAnswer(buildQuestionTree(q), selected);
+    return { is_correct: result.is_correct, correct_answer: result.correct_answer, explanation: q.explanation };
+  });
+
+  app.post('/answer', { preHandler: [requireAuth] }, async (request, reply) => {
+    const parsed = answerSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Geçersiz veri' });
+    const { question_id, rating, selected } = parsed.data;
+
+    const q = db.select().from(questions).where(eq(questions.id, question_id)).get();
+    if (!q) return reply.code(404).send({ error: 'Soru bulunamadı' });
+
+    const result = submitAnswer(request.user.id, buildQuestionTree(q), rating, selected);
+    return { is_correct: result.is_correct, correct_answer: result.correct_answer, card: result.card };
+  });
+}
