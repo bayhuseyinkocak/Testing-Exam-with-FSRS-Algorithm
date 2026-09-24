@@ -1,61 +1,45 @@
-# Deploy Rehberi — Vercel + Render + Neon + Cloudflare
+# Deploy Rehberi — Vercel (frontend + backend) + Neon + Cloudflare
 
-Bu uygulama kişisel kullanım içindir; aşağıdaki platformların ücretsiz katmanlarıyla yayınlanabilir.
+Kart gerektirmeyen ücretsiz yayın mimarisi. Kişisel kullanım içindir.
 
 ## Mimari
 
 ```
-Tarayıcı → Vercel (frontend, HTTPS)
-              │  /api/*  (rewrite/proxy)
+Tarayıcı → Vercel (frontend, statik)
+              │  /api/*  (rewrite)
               ▼
-          Render (backend Fastify) → Neon (PostgreSQL)
+          Vercel (backend, serverless Fastify) → Neon (PostgreSQL)
 
 Domain: Cloudflare DNS → Vercel
 ```
 
-- Frontend ve backend aynı origin altında görünür (Vercel `/api` isteklerini backend'e yönlendirir), bu yüzden cookie/CORS sorunu olmaz.
-
 ---
 
-## 1) Neon — Veritabanı
+## 1) Neon — Veritabanı (✓ tamamlandı)
 
-1. [neon.tech](https://neon.tech) → ücretsiz proje oluştur → PostgreSQL database oluştur.
-2. **Connection string**'i kopyala (ör. `postgresql://user:pass@xxx.neon.tech/neondb?sslmode=require`).
-3. Bu string `DATABASE_URL` olacak.
+- Bağlantı: Neon connection string (`DATABASE_URL`).
+- Tablolar (migration) ve admin kullanıcısı (seed) Neon'a kuruldu.
 
-## 2) Render — Backend
+## 2) Vercel — Backend (serverless)
 
-1. [render.com](https://render.com) → **New → Web Service** → GitHub reposuna bağlan.
+1. [vercel.com](https://vercel.com) → **Add New Project** → GitHub reposuna bağlan.
 2. **Root Directory:** `backend`
-3. Render `backend/Dockerfile`'ı otomatik algılar (veya Docker build seç).
-4. **Environment Variables:**
+3. **Environment Variables:**
    - `DATABASE_URL` = Neon connection string
-   - `JWT_SECRET` = uzun rastgele bir değer
+   - `JWT_SECRET` = uzun rastgele değer
    - `NODE_ENV` = `production`
-   - `HOST` = `0.0.0.0` (Dockerfile'da zaten set, opsiyonel)
-5. Deploy et ve backend URL'ini not al (ör. `https://senin-uygulaman.onrender.com`).
-
-> Not: Render ücretsiz web servisi 15 dk inaktif kalınca uyur; ilk istekte birkaç saniye bekler.
-
-### Admin kullanıcısını oluştur (ilk seferde bir kez)
-
-Backend deploy olduktan sonra admin hesabı açmak için seed'i Neon'a karşı çalıştır:
-
-```bash
-cd backend
-DATABASE_URL="<neon-url>" ADMIN_PASSWORD="<guclu-sifre>" pnpm db:seed
-```
+4. Deploy et. Vercel `backend/api/index.ts`'i otomatik serverless fonksiyon olarak algılar.
+5. Backend URL'ini not al (ör. `https://senin-backend.vercel.app`).
 
 ## 3) Vercel — Frontend
 
-1. [vercel.com](https://vercel.com) → **Add New Project** → GitHub reposuna bağlan.
-2. **Root Directory:** `frontend`
-3. `frontend/vercel.json` içindeki `YOUR-BACKEND.onrender.com` kısmını gerçek Render backend URL'inle değiştir.
-4. Deploy et.
+1. **Add New Project** → aynı repo → **Root Directory:** `frontend`
+2. `frontend/vercel.json` içindeki `YOUR-BACKEND.onrender.com` yerine backend'in Vercel URL'ini yaz.
+3. Deploy et.
 
-## 4) Cloudflare — Domain
+## 4) Cloudflare — Domain (opsiyonel)
 
-1. Cloudflare'da domainin için **CNAME** kaydı ekle → Vercel'in verdiği `cname.vercel-dns.com` adresine yönlendir.
+1. Cloudflare'da **CNAME** → Vercel'in `cname.vercel-dns.com` adresine yönlendir.
 2. Vercel'de projeye domaini ekle (Settings → Domains).
 3. Cloudflare SSL modunu **Full** yap.
 
@@ -63,7 +47,6 @@ DATABASE_URL="<neon-url>" ADMIN_PASSWORD="<guclu-sifre>" pnpm db:seed
 
 ## Önemli notlar
 
-- **Vercel Hobby** planı ticari olmayan kullanım içindir (bu uygulama uygun).
-- **Neon** ücretsiz katmanı demo için yeterlidir; yedeği `GET /api/exams/:id/export` (JSON) ile alınabilir.
-- **Render** ücretsiz Postgres değil; DB Neon'da, backend Render'da.
-- Domain henüz yoksa `*.vercel.app` ve `*.onrender.com` URL'leriyle de kullanılabilir (cross-domain olursa cookie için ek ayar gerekir — bu yüzden `/api` rewrite'ı önerilir).
+- **Dosya içe aktarma limiti:** Vercel serverless ~4.5 MB istek limiti vardır. Soru bankası CSV/Excel dosyan bu boyutun altındaysa sorun yok; büyükse parçalara bölerek içe aktar.
+- **Cold start:** ücretsiz Vercel'de ilk istek birkaç saniye gecikebilir (normal).
+- **Admin:** İlk admin kullanıcısı Neon'a seed ile oluşturuldu; şifre ayrıca iletildi. Sonra uygulama içinden (Kullanıcılar sayfası) yeni hesaplar açılır.
