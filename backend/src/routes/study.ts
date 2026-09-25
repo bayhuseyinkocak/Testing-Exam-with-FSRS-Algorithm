@@ -3,11 +3,15 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { db, exams, questions } from '../db';
 import { requireAuth } from '../plugins/auth';
-import { getDueQuestions, checkAnswer, submitAnswer } from '../services/study';
+import { getDueQuestions, checkAnswer, submitAnswer, getStudySettings, saveStudySettings } from '../services/study';
 import { buildQuestionTree } from '../services/questions';
 
 const dueQuerySchema = z.object({
   exam_id: z.coerce.number().int().positive(),
+});
+
+const settingsSchema = z.object({
+  new_cards_per_day: z.number().int().min(0).max(1000),
 });
 
 const checkSchema = z.object({
@@ -22,6 +26,16 @@ const answerSchema = z.object({
 });
 
 export default async function studyRoutes(app: FastifyInstance) {
+  app.get('/settings', { preHandler: [requireAuth] }, async (request) => {
+    return getStudySettings(request.user.id);
+  });
+
+  app.put('/settings', { preHandler: [requireAuth] }, async (request, reply) => {
+    const parsed = settingsSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Geçersiz veri' });
+    return saveStudySettings(request.user.id, parsed.data.new_cards_per_day);
+  });
+
   app.get('/due', { preHandler: [requireAuth] }, async (request, reply) => {
     const parsed = dueQuerySchema.safeParse(request.query);
     if (!parsed.success) return reply.code(400).send({ error: 'exam_id gerekli' });

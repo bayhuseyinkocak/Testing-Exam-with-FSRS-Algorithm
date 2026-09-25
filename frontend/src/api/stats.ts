@@ -43,3 +43,9 @@ export function useOptimizeFsrs() {
     mutationFn: () => api<{ results: OptimizeResult[] }>('/stats/optimize', { method: 'POST' }),
   });
 }
+
+export function useResetFsrs() {
+  return useMutation({
+    mutationFn: () => api<{ reset: number }>('/stats/optimize/reset', { method: 'POST' }),
+  });
+}

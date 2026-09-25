@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { db, users } from '../db';
 import { requireAuth, requireAdmin } from '../plugins/auth';
 import { getOverview } from '../services/stats';
-import { optimizeForUser } from '../services/optimizer';
+import { optimizeForUser, resetUserParams } from '../services/optimizer';
 
 export default async function statsRoutes(app: FastifyInstance) {
   app.get('/overview', { preHandler: [requireAuth] }, async (request) => {
@@ -23,5 +23,14 @@ export default async function statsRoutes(app: FastifyInstance) {
       });
     }
     return { results };
+  });
+
+  app.post('/optimize/reset', { preHandler: [requireAdmin] }, async () => {
+    const allUsers = await db.select({ id: users.id }).from(users);
+    let reset = 0;
+    for (const u of allUsers) {
+      reset += await resetUserParams(u.id);
+    }
+    return { reset };
   });
 }

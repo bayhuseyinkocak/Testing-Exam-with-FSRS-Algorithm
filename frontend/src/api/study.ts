@@ -35,11 +35,30 @@ export type AnswerResponse = { is_correct: boolean; correct_answer: string; card
 
 export type Rating = 'again' | 'hard' | 'good' | 'easy';
 
+export type StudySettings = { new_cards_per_day: number };
+
 export function useDueQuestions(examId: number | undefined) {
   return useQuery<DueResponse>({
     queryKey: ['study', 'due', examId],
     queryFn: () => api('/study/due?exam_id=' + examId!),
     enabled: examId != null,
+    // Her girişte taze liste çek (önceki oturumun cevaplanmış kartları görünmesin).
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+export function useStudySettings() {
+  return useQuery<StudySettings>({
+    queryKey: ['study', 'settings'],
+    queryFn: () => api('/study/settings'),
+  });
+}
+
+export function useUpdateStudySettings() {
+  return useMutation({
+    mutationFn: (vars: StudySettings) =>
+      api<StudySettings>('/study/settings', { method: 'PUT', body: JSON.stringify(vars) }),
   });
 }
 

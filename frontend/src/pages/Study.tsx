@@ -319,6 +319,13 @@ export default function Study() {
               {feedback.is_correct ? (
                 <>
                   <button
+                    onClick={() => handleRate('hard')}
+                    disabled={answer.isPending}
+                    className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+                  >
+                    Zor
+                  </button>
+                  <button
                     onClick={() => handleRate('good')}
                     disabled={answer.isPending}
                     className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"

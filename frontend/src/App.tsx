@@ -8,6 +8,7 @@ import QuestionBank from './pages/QuestionBank';
 import QuestionForm from './pages/QuestionForm';
 import Study from './pages/Study';
 import Stats from './pages/Stats';
+import Settings from './pages/Settings';
 import Users from './pages/Users';
 import { useMe } from './api/auth';
 
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="exams/:examId/questions/:questionId/edit" element={<RequireAdmin><QuestionForm /></RequireAdmin>} />
           <Route path="study/:examId" element={<Study />} />
           <Route path="stats" element={<Stats />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="users" element={<RequireAdmin><Users /></RequireAdmin>} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -18,7 +18,8 @@ const CLIP: [number, number][] = [
   [1, 6], [0, 2], [0, 2], [0.01, 0.8], [0.1, 0.8],
 ];
 
-export const MIN_REVIEWS_FOR_OPTIMIZE = 20;
+// Resmi FSRS önerisi binlerce tekrar; bu eşiğin altında kişiselleştirme güvenilir değil.
+export const MIN_REVIEWS_FOR_OPTIMIZE = 400;
 
 export type ReviewPoint = { rating: Grade; days: number };
 export type ReviewSequence = { reviews: ReviewPoint[] };
@@ -137,7 +138,25 @@ export async function optimizeForUser(userId: number): Promise<OptimizeResult> {
   }
 
   const seqs = buildSequences(rows);
-  const w = optimizeW(seqs);
+
+  // Kart bazlı %80 eğitim / %20 test ayrımı; sadece test kümesinde gerçekten iyileşiyorsa kaydet.
+  const testSeqs = seqs.filter((_, i) => i % 5 === 0);
+  const trainSeqs = seqs.filter((_, i) => i % 5 !== 0);
+  if (trainSeqs.length < 2) {
+    return { review_count: rows.length, optimized: false, error: 'Yeterli eğitim verisi yok' };
+  }
+
+  const w = optimizeW(trainSeqs);
+  const baselineLoss = forwardLoss(defaultW(), testSeqs);
+  const optimizedLoss = forwardLoss(w, testSeqs);
+
+  if (!(optimizedLoss < baselineLoss)) {
+    return {
+      review_count: rows.length,
+      optimized: false,
+      error: 'Optimizasyon varsayılan parametrelerden daha iyi sonuç vermedi; parametreler korundu',
+    };
+  }
 
   await db
     .insert(fsrsParams)
@@ -152,6 +171,15 @@ export async function optimizeForUser(userId: number): Promise<OptimizeResult> {
     });
 
   return { review_count: rows.length, optimized: true, w };
+}
+
+// Kişisel parametreleri siler (varsayılan FSRS parametrelerine dönüş).
+export async function resetUserParams(userId: number): Promise<number> {
+  const deleted = await db
+    .delete(fsrsParams)
+    .where(eq(fsrsParams.user_id, userId))
+    .returning({ user_id: fsrsParams.user_id });
+  return deleted.length;
 }
 
 export async function getUserW(userId: number): Promise<number[] | null> {

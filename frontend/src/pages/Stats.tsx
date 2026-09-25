@@ -1,4 +1,4 @@
-import { useStatsOverview, useOptimizeFsrs } from '../api/stats';
+import { useStatsOverview, useOptimizeFsrs, useResetFsrs } from '../api/stats';
 import { useMe } from '../api/auth';
 
 function pct(v: number | null): string {
@@ -18,6 +18,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 export default function Stats() {
   const { data, isLoading, isError } = useStatsOverview();
   const optimize = useOptimizeFsrs();
+  const resetParams = useResetFsrs();
   const { data: me } = useMe();
 
   if (isLoading) return <p className="text-slate-500">Yükleniyor...</p>;
@@ -39,8 +40,21 @@ export default function Stats() {
             >
               {optimize.isPending ? 'Optimize ediliyor...' : 'FSRS Parametrelerini Optimize Et'}
             </button>
-            <span className="text-xs text-slate-500">(kullanıcı başına en az 20 tekrar gerekli)</span>
+            <button
+              onClick={() => resetParams.mutate()}
+              disabled={resetParams.isPending}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+            >
+              {resetParams.isPending ? 'Sıfırlanıyor...' : 'Varsayılana Dön'}
+            </button>
+            <span className="text-xs text-slate-500">(kullanıcı başına en az 400 tekrar gerekli; aksi halde varsayılan parametreler korunur)</span>
           </div>
+          {resetParams.isSuccess && (
+            <p className="mt-2 text-sm text-green-600">{resetParams.data.reset} kullanıcının parametreleri varsayılana döndürüldü ✓</p>
+          )}
+          {resetParams.isError && (
+            <p className="mt-2 text-sm text-red-600">{(resetParams.error as Error).message}</p>
+          )}
           {optimize.isSuccess && (
             <ul className="mt-3 space-y-1 text-sm">
               {optimize.data.results.map((r) => (

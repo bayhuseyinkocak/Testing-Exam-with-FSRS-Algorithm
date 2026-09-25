@@ -30,6 +30,9 @@ export default function Layout() {
               <NavLink to="/stats" className={({ isActive }) => navClass(isActive)}>
                 İstatistik
               </NavLink>
+              <NavLink to="/settings" className={({ isActive }) => navClass(isActive)}>
+                Ayarlar
+              </NavLink>
               {isAdmin && (
                 <NavLink to="/exams" className={({ isActive }) => navClass(isActive)}>
                   Sınav Yönetimi

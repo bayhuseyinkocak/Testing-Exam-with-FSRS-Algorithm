@@ -15,6 +15,13 @@
       "when": 1790269067836,
       "tag": "0001_absent_paibok",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790349090934,
+      "tag": "0002_odd_mathemanic",
+      "breakpoints": true
     }
   ]
 }

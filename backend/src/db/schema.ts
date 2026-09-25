@@ -107,6 +107,13 @@ export const fsrsParams = pgTable('fsrs_params', {
   updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Kullanıcı geneli çalışma ayarları. new_cards_per_day = 0 ise sınırsız yeni kart.
+export const studySettings = pgTable('study_settings', {
+  user_id: integer('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  new_cards_per_day: integer('new_cards_per_day').notNull().default(20),
+  updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Exam = typeof exams.$inferSelect;

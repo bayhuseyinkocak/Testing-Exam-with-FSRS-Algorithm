@@ -1,16 +1,25 @@
-import { and, asc, eq } from 'drizzle-orm';
-import { FSRS, generatorParameters, Rating, createEmptyCard, type Card, type State, type Grade } from 'ts-fsrs';
-import { db, questions, userQuestionFsrs, reviewLogs } from '../db';
+import { and, asc, eq, inArray } from 'drizzle-orm';
+import { FSRS, generatorParameters, Rating, State, createEmptyCard, type Card, type Grade } from 'ts-fsrs';
+import { db, questions, userQuestionFsrs, reviewLogs, studySettings } from '../db';
 import { buildQuestionTree, type QuestionTree } from './questions';
 import { getUserW } from './optimizer';
 
 const fsrs = new FSRS(generatorParameters());
+
+export const DEFAULT_NEW_CARDS_PER_DAY = 20;
 
 const RATING_MAP: Record<string, Grade> = {
   again: Rating.Again,
   hard: Rating.Hard,
   good: Rating.Good,
   easy: Rating.Easy,
+};
+
+const RATING_LABEL: Record<Grade, string> = {
+  [Rating.Again]: 'again',
+  [Rating.Hard]: 'hard',
+  [Rating.Good]: 'good',
+  [Rating.Easy]: 'easy',
 };
 
 type FsrsRow = typeof userQuestionFsrs.$inferSelect;
@@ -24,6 +33,14 @@ export type StudyCard = {
 };
 
 export type StudyQuestion = QuestionTree & { card: StudyCard };
+
+export type StudySettings = { new_cards_per_day: number };
+
+function startOfLocalDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
 
 function rowToCard(row: FsrsRow): Card {
   return {
@@ -65,28 +82,82 @@ function cardToStudyCard(card: Card): StudyCard {
   };
 }
 
+export async function getStudySettings(userId: number): Promise<StudySettings> {
+  const rows = await db
+    .select()
+    .from(studySettings)
+    .where(eq(studySettings.user_id, userId))
+    .limit(1);
+  const row = rows[0];
+  return { new_cards_per_day: row?.new_cards_per_day ?? DEFAULT_NEW_CARDS_PER_DAY };
+}
+
+export async function saveStudySettings(userId: number, newCardsPerDay: number): Promise<StudySettings> {
+  await db
+    .insert(studySettings)
+    .values({ user_id: userId, new_cards_per_day: newCardsPerDay })
+    .onConflictDoUpdate({
+      target: studySettings.user_id,
+      set: { new_cards_per_day: newCardsPerDay, updated_at: new Date() },
+    });
+  return { new_cards_per_day: newCardsPerDay };
+}
+
+// Bugün ilk kez çalışılan (yeni tanıtılan) kart sayısını bulur.
+async function countNewCardsIntroducedToday(userId: number, questionIds: number[]): Promise<number> {
+  if (questionIds.length === 0) return 0;
+  const rows = await db
+    .select({ question_id: reviewLogs.question_id, answered_at: reviewLogs.answered_at })
+    .from(reviewLogs)
+    .where(and(eq(reviewLogs.user_id, userId), inArray(reviewLogs.question_id, questionIds)));
+
+  const firstByQid = new Map<number, number>();
+  for (const r of rows) {
+    const t = r.answered_at.getTime();
+    const prev = firstByQid.get(r.question_id);
+    if (prev == null || t < prev) firstByQid.set(r.question_id, t);
+  }
+
+  const start = startOfLocalDay(new Date()).getTime();
+  let count = 0;
+  for (const t of firstByQid.values()) if (t >= start) count++;
+  return count;
+}
+
 export async function getDueQuestions(userId: number, examId: number): Promise<StudyQuestion[]> {
   const now = new Date();
+  const settings = await getStudySettings(userId);
   const qs = await db
     .select()
     .from(questions)
     .where(eq(questions.exam_id, examId))
     .orderBy(asc(questions.order), asc(questions.id));
 
+  const ids = qs.map((q) => q.id);
+  const existingRows = ids.length
+    ? await db
+        .select()
+        .from(userQuestionFsrs)
+        .where(and(eq(userQuestionFsrs.user_id, userId), inArray(userQuestionFsrs.question_id, ids)))
+    : [];
+  const rowByQid = new Map(existingRows.map((r) => [r.question_id, r]));
+
+  const newIntroduced = await countNewCardsIntroducedToday(userId, ids);
+  const limit = settings.new_cards_per_day;
+  // 0 = sınırsız yeni kart.
+  let budget = limit === 0 ? Infinity : Math.max(0, limit - newIntroduced);
+
   const result: StudyQuestion[] = [];
   for (const q of qs) {
-    const rows = await db
-      .select()
-      .from(userQuestionFsrs)
-      .where(and(eq(userQuestionFsrs.user_id, userId), eq(userQuestionFsrs.question_id, q.id)))
-      .limit(1);
-    const row = rows[0];
-
-    if (!row) {
+    const row = rowByQid.get(q.id);
+    if (row) {
+      if (row.due.getTime() <= now.getTime()) {
+        result.push({ ...(await buildQuestionTree(q)), card: cardToStudyCard(rowToCard(row)) });
+      }
+    } else if (budget > 0) {
       const card = createEmptyCard(now);
       result.push({ ...(await buildQuestionTree(q)), card: cardToStudyCard(card) });
-    } else if (row.due.getTime() <= now.getTime()) {
-      result.push({ ...(await buildQuestionTree(q)), card: cardToStudyCard(rowToCard(row)) });
+      budget--;
     }
   }
   return result;
@@ -94,17 +165,32 @@ export async function getDueQuestions(userId: number, examId: number): Promise<S
 
 export async function countDueQuestions(userId: number, examId: number): Promise<number> {
   const now = new Date();
+  const settings = await getStudySettings(userId);
   const qs = await db.select({ id: questions.id }).from(questions).where(eq(questions.exam_id, examId));
+
+  const ids = qs.map((q) => q.id);
+  const existingRows = ids.length
+    ? await db
+        .select({ question_id: userQuestionFsrs.question_id, due: userQuestionFsrs.due })
+        .from(userQuestionFsrs)
+        .where(and(eq(userQuestionFsrs.user_id, userId), inArray(userQuestionFsrs.question_id, ids)))
+    : [];
+  const dueByQid = new Map<number, Date>();
+  for (const r of existingRows) dueByQid.set(r.question_id, r.due);
+
+  const newIntroduced = await countNewCardsIntroducedToday(userId, ids);
+  const limit = settings.new_cards_per_day;
+  let budget = limit === 0 ? Infinity : Math.max(0, limit - newIntroduced);
+
   let count = 0;
   for (const q of qs) {
-    const rows = await db
-      .select({ due: userQuestionFsrs.due })
-      .from(userQuestionFsrs)
-      .where(and(eq(userQuestionFsrs.user_id, userId), eq(userQuestionFsrs.question_id, q.id)))
-      .limit(1);
-    const row = rows[0];
-    if (!row) count++;
-    else if (row.due.getTime() <= now.getTime()) count++;
+    const due = dueByQid.get(q.id);
+    if (due) {
+      if (due.getTime() <= now.getTime()) count++;
+    } else if (budget > 0) {
+      count++;
+      budget--;
+    }
   }
   return count;
 }
@@ -166,7 +252,14 @@ export async function submitAnswer(
 ): Promise<AnswerResult> {
   const now = new Date();
   const check = checkAnswer(question, selected);
-  const rating = RATING_MAP[ratingLabel] ?? Rating.Good;
+
+  let rating = RATING_MAP[ratingLabel] ?? Rating.Good;
+  // Sunucu tarafı tutarlılık: doğru cevaba Again, yanlış cevaba Good/Hard/Easy gidemez.
+  if (check.is_correct) {
+    if (rating === Rating.Again) rating = Rating.Good;
+  } else if (rating !== Rating.Again) {
+    rating = Rating.Again;
+  }
 
   const rows = await db
     .select()
@@ -180,6 +273,11 @@ export async function submitAnswer(
   const scheduler = userW ? new FSRS({ ...generatorParameters(), w: userW }) : fsrs;
   const result = scheduler.next(card, now, rating);
   const newCard = result.card;
+
+  // Günlük kartlar (Review) yerel gece yarısında "due" olsun; tekrar saati akşamsa sabah boş görünmesin.
+  if (newCard.state === State.Review) {
+    newCard.due = startOfLocalDay(newCard.due);
+  }
 
   if (row) {
     await db
@@ -195,7 +293,7 @@ export async function submitAnswer(
   await db.insert(reviewLogs).values({
     user_id: userId,
     question_id: question.id,
-    rating: ratingLabel,
+    rating: RATING_LABEL[rating] ?? ratingLabel,
     is_correct: check.is_correct,
     selected_options: JSON.stringify(selected),
     answered_at: now,
