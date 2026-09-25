@@ -7,10 +7,18 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  // Sadece gövde varsa JSON Content-Type gönder (gövdesiz POST'lar 400 almasın)
+  if (options.body != null && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const res = await fetch('/api' + path, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...(options.headers ?? {}) },
     ...options,
+    headers,
   });
 
   let data: unknown = null;
